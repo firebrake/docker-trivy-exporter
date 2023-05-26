@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Copyright (C) 2023 Jérémy WALTHER <jeremy.walther@firebrake.fr> & FIREBRAKE SAS.
+# trivy-exporter is licensed under the terms of the AGPL-3.0-only license.
+# See <https://github.com/firebrake/docker-trivy-exporter> or README.md file for details.
+
+set -e;
+
+echo -e "[Trivy:${TRIVY_VERSION}] Trivy Exporter for Prometheus, by FIREBRAKE SAS.\n<https://github.com/firebrake/docker-trivy-exporter>"
+
+/usr/bin/envsubst '${TRIVY_EXPORTER_COMPUTE_CRON_MINUTES}${TRIVY_EXPORTER_COMPUTE_CRON_HOURS}' < /trivy-exporter/crontab.tpl > /etc/crontabs/root
+/usr/bin/supervisord -c /etc/supervisord.conf

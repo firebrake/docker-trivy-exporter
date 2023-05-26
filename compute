@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Copyright (C) 2023 Jérémy WALTHER <jeremy.walther@firebrake.fr> & FIREBRAKE SAS.
+# trivy-exporter is licensed under the terms of the AGPL-3.0-only license.
+# See <https://github.com/firebrake/docker-trivy-exporter> or README.md file for details.
+
+mkdir -p /trivy-exporter/.cache
+rm -f /trivy-exporter/processed
+find /trivy-exporter/.cache -type f -mtime +${TRIVY_EXPORTER_CACHE_REFRESH_DAYS} -delete
+touch /trivy-exporter/processed
+
+if [[ "${TRIVY_EXPORTER_IMAGES_SCAN}" == 1 ]]; then
+    declare -r images=$(/usr/bin/docker ps --format '{{ .Image }}' | sort | uniq)
+    echo "Found $(echo "${images}" | wc -l) images"
+    for image_name in ${images}; do
+        echo "Processing image '${image_name}' ..."
+        image_id=$(docker inspect --format '{{ .Id }}' --type image "${image_name}")
+        echo "Image ID: '${image_id}'"
+        image_json=/trivy-exporter/.cache/$(echo "${image_name}_${image_id}" | basenc --base64url --wrap=0 | tr -d '=').json
+        image_txt=/trivy-exporter/.cache/$(echo "${image_name}_${image_id}" | basenc --base64url --wrap=0 | tr -d '=').txt
+        echo "${image_json}" >> /trivy-exporter/processed
+        echo "${image_txt}" >> /trivy-exporter/processed
+        if [[ -f "${image_json}" ]]; then
+            echo "Existing Trivy scan result found."
+        else
+            /usr/local/bin/trivy image --format json --scanners ${TRIVY_EXPORTER_IMAGES_SCANNERS} "${image_name}" > "${image_json}"
+            rm -f "${image_txt}"
+            touch "${image_txt}"
+            echo "trivy_image_creation_date{image=\"${image_name}\"} $(jq -r '.Metadata.ImageConfig.created' "${image_json}" | date +'%s')" >> "${image_txt}"
+            echo "trivy_image_os_eosl{image=\"${image_name}\",family=\"$(jq -r '.Metadata.OS?.Family' "${image_json}")\",name=\"$(jq -r '.Metadata.OS?.Name' "${image_json}")\"} $([[ $(jq -r '.Metadata.OS?.EOSL' "${image_json}") == true ]] && echo 1 || echo 0)" >> "${image_txt}"
+            while read line; do
+                echo "trivy_image_vulnerability_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",cve=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
+            done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | "\(.Severity) \(.VulnerabilityID)"' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
+            while read line; do
+                echo "trivy_image_vulnerabilities_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
+            done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | .Severity' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
+            while read line; do
+                echo "trivy_image_license_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",license=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
+            done <<< $(jq -r '.Results[] | .Licenses[]? | "\(.Severity) \(.Name)"' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
+            while read line; do
+                echo "trivy_image_licenses_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
+            done <<< $(jq -r '.Results[] | .Licenses[]? | .Severity' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
+        fi
+    done
+fi
+
+if [[ "${TRIVY_EXPORTER_ROOTFS_SCAN}" == 1 ]]; then
+    echo "Processing rootfs '${TRIVY_EXPORTER_ROOTFS_PATH}' ..."
+    rootfs_json=/trivy-exporter/.cache/rootfs.json
+    rootfs_txt=/trivy-exporter/.cache/rootfs.txt
+    echo "${rootfs_json}" >> /trivy-exporter/processed
+    echo "${rootfs_txt}" >> /trivy-exporter/processed
+    if [[ -f ${rootfs_json} ]]; then
+        echo "Existing Trivy scan result found."
+    else
+        /usr/local/bin/trivy rootfs --format json --scanners ${TRIVY_EXPORTER_ROOTFS_SCANNERS} "${TRIVY_EXPORTER_ROOTFS_PATH}" > ${rootfs_json}
+        rm -f ${rootfs_txt}
+        touch ${rootfs_txt}
+        echo "trivy_rootfs_os_eosl{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",family=\"$(jq -r '.Metadata.OS?.Family' ${rootfs_json})\",name=\"$(jq -r '.Metadata.OS?.Name' ${rootfs_json})\"} $([[ $(jq -r '.Metadata.OS?.EOSL' "${image_json}") == true ]] && echo 1 || echo 0)" >> ${rootfs_txt}
+        while read line; do
+            echo "trivy_rootfs_vulnerability_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",cve=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
+        done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | "\(.Severity) \(.VulnerabilityID)"' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
+        while read line; do
+            echo "trivy_rootfs_vulnerabilities_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
+        done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | .Severity' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
+        while read line; do
+            echo "trivy_rootfs_license_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",license=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
+        done <<< $(jq -r '.Results[] | .Licenses[]? | "\(.Severity) \(.Name)"' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
+        while read line; do
+            echo "trivy_rootfs_licenses_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
+        done <<< $(jq -r '.Results[] | .Licenses[]? | .Severity' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
+    fi
+fi
+
+for cached_file in /trivy-exporter/.cache/*; do
+    if ! grep -qxFe "${cached_file}" /trivy-exporter/processed; then
+        rm -f "${cached_file}"
+    fi
+done
+
+cat /trivy-exporter/.cache/*.txt > /trivy-exporter/metrics
