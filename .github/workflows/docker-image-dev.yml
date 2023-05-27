@@ -1,0 +1,16 @@
+name: Docker Image DEV
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build & Push the Docker image
+      run: |
+        docker build . --file Dockerfile --tag firebrake/trivy-exporter:dev
+        docker push firebrake/trivy-exporter:dev
