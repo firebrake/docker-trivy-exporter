@@ -30,22 +30,22 @@ if [[ "${TRIVY_EXPORTER_IMAGES_SCAN}" == 1 ]]; then
                 echo "trivy_image_creation_date{image=\"${image_name}\"} $(jq -r '.Metadata.ImageConfig.created' "${image_json}" | date +'%s')" >> "${image_txt}"
                 echo "trivy_image_os_eosl{image=\"${image_name}\",family=\"$(jq -r '.Metadata.OS?.Family' "${image_json}")\",name=\"$(jq -r '.Metadata.OS?.Name' "${image_json}")\"} $([[ $(jq -r '.Metadata.OS?.EOSL' "${image_json}") == true ]] && echo 1 || echo 0)" >> "${image_txt}"
                 while read line; do
-                    if [[ -n "${line// }"]]; then
+                    if [[ -n "${line// }" ]]; then
                         echo "trivy_image_vulnerability_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",cve=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
                     fi
                 done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | "\(.Severity) \(.VulnerabilityID)"' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
                 while read line; do
-                    if [[ -n "${line// }"]]; then
+                    if [[ -n "${line// }" ]]; then
                         echo "trivy_image_vulnerabilities_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
                     fi
                 done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | .Severity' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
                 while read line; do
-                    if [[ -n "${line// }"]]; then
+                    if [[ -n "${line// }" ]]; then
                         echo "trivy_image_license_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",license=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
                     fi
                 done <<< $(jq -r '.Results[] | .Licenses[]? | "\(.Severity) \(.Name)"' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
                 while read line; do
-                    if [[ -n "${line// }"]]; then
+                    if [[ -n "${line// }" ]]; then
                         echo "trivy_image_licenses_count{image=\"${image_name}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> "${image_txt}"
                     fi
                 done <<< $(jq -r '.Results[] | .Licenses[]? | .Severity' "${image_json}" | sort | uniq -c | awk '{$1=$1};1')
@@ -69,22 +69,22 @@ if [[ "${TRIVY_EXPORTER_ROOTFS_SCAN}" == 1 ]]; then
             touch ${rootfs_txt}
             echo "trivy_rootfs_os_eosl{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",family=\"$(jq -r '.Metadata.OS?.Family' ${rootfs_json})\",name=\"$(jq -r '.Metadata.OS?.Name' ${rootfs_json})\"} $([[ $(jq -r '.Metadata.OS?.EOSL' "${image_json}") == true ]] && echo 1 || echo 0)" >> ${rootfs_txt}
             while read line; do
-                if [[ -n "${line// }"]]; then
+                if [[ -n "${line// }" ]]; then
                     echo "trivy_rootfs_vulnerability_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",cve=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
                 fi
             done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | "\(.Severity) \(.VulnerabilityID)"' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
             while read line; do
-                if [[ -n "${line// }"]]; then
+                if [[ -n "${line// }" ]]; then
                     echo "trivy_rootfs_vulnerabilities_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
                 fi
             done <<< $(jq -r '.Results[] | .Vulnerabilities[]? | .Severity' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
             while read line; do
-                if [[ -n "${line// }"]]; then
+                if [[ -n "${line// }" ]]; then
                     echo "trivy_rootfs_license_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",license=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
                 fi
             done <<< $(jq -r '.Results[] | .Licenses[]? | "\(.Severity) \(.Name)"' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
             while read line; do
-                if [[ -n "${line// }"]]; then
+                if [[ -n "${line// }" ]]; then
                     echo "trivy_rootfs_licenses_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
                 fi
             done <<< $(jq -r '.Results[] | .Licenses[]? | .Severity' ${rootfs_json} | sort | uniq -c | awk '{$1=$1};1')
