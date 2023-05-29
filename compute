@@ -4,6 +4,7 @@
 # trivy-exporter is licensed under the terms of the AGPL-3.0-only license.
 # See <https://github.com/firebrake/docker-trivy-exporter> or README.md file for details.
 
+rm -rf /tmp/*
 mkdir -p /trivy-exporter/.cache
 rm -f /trivy-exporter/processed
 find /trivy-exporter/.cache -type f -mtime +${TRIVY_EXPORTER_CACHE_REFRESH_DAYS} -delete
@@ -91,6 +92,8 @@ if [[ "${TRIVY_EXPORTER_ROOTFS_SCAN}" == 1 ]]; then
         fi
     fi
 fi
+
+rm -rf /tmp/*
 
 for cached_file in /trivy-exporter/.cache/*; do
     if ! grep -qxFe "${cached_file}" /trivy-exporter/processed; then
