@@ -72,7 +72,7 @@ if [[ "${TRIVY_EXPORTER_ROOTFS_SCAN}" == 1 ]]; then
         touch ${rootfs_txt}
         if [[ "$(du ${rootfs_json} | cut -f1)" > 0 ]]; then
             echo "trivy_rootfs_scan_date{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",status=\"success\"} $(date +'%s')" >> ${rootfs_txt}
-            echo "trivy_rootfs_os_eosl{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",family=\"$(jq -r '.Metadata.OS?.Family' ${rootfs_json})\",name=\"$(jq -r '.Metadata.OS?.Name' ${rootfs_json})\"} $([[ $(jq -r '.Metadata.OS?.EOSL' "${image_json}") == true ]] && echo 1 || echo 0)" >> ${rootfs_txt}
+            echo "trivy_rootfs_os_eosl{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",family=\"$(jq -r '.Metadata.OS?.Family' ${rootfs_json})\",name=\"$(jq -r '.Metadata.OS?.Name' ${rootfs_json})\"} $([[ $(jq -r '.Metadata.OS?.EOSL' "${rootfs_json}") == true ]] && echo 1 || echo 0)" >> ${rootfs_txt}
             while read line; do
                 if [[ -n "${line// }" ]]; then
                     echo "trivy_rootfs_vulnerability_count{path=\"${TRIVY_EXPORTER_ROOTFS_PATH}\",severity=\"$(echo ${line} | cut -d' ' -f2 | tr [:upper:] [:lower:])\",cve=\"$(echo ${line} | cut -d' ' -f3)\"} $(echo ${line} | cut -d' ' -f1)" >> ${rootfs_txt}
