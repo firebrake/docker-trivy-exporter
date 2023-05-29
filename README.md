@@ -6,13 +6,26 @@
 
 * Create a `docker-compose.yml` file with following content:
   ```yml
-  version: '3.8'
+  version: '2.4'
   
   services:
     trivy-exporter:
       image: firebrake/trivy-exporter
+      cap_drop:
+        - all
+      cap_add:
+        - chown
+        - dac_override
+        - kill
+        - setgid
+        - setuid
+      cpus: 0.5
+      mem_limit: 1G
+      mem_reservation: 64m
+      memswap_limit: 1G
       ports:
         - 8080:8080
+      restart: unless-stopped
       volumes:
         - /:/rootfs:ro
         - /var/run/docker.sock:/var/run/docker.sock:ro
